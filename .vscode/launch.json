@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug AarogyaMitra Flask",
+            "type": "python",
+            "request": "launch",
+            "program": "app.py",
+            "console": "integratedTerminal",
+            "env": {
+                "FLASK_ENV": "development"
+            },
+            "args": [],
+            "jinja": true
+        }
+    ]
+}
