@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -68,7 +69,7 @@ class ChatProvider with ChangeNotifier {
   }
 
   final String baseUrl =
-      'http://10.117.214.196:5000/api'; // update IP if needed
+      'http://10.141.90.209:5000/api'; // update IP if needed
 
   List<ChatMessage> get messages => _messages;
   List<Map<String, dynamic>> get conversations => _conversations;
@@ -312,7 +313,7 @@ class ChatProvider with ChangeNotifier {
             headers: {'Content-Type': 'application/json'},
             body: json.encode({'text': text, 'language': language}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -352,6 +353,13 @@ ${precautionsList.map((p) => '• $p').join('\n')}
       } else {
         throw Exception('API returned status code: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      addMessage(ChatMessage(
+        message:
+            'सर्व्हरशी संपर्क करताना वेळ संपला. कृपया सर्व्हर चालू आहे आणि नेटवर्क कनेक्शन तपासा.\nत्रुटी: $e',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
     } catch (e) {
       addMessage(ChatMessage(
         message:

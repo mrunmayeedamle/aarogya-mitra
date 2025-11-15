@@ -67,6 +67,28 @@ class DiseasePredictor:
         self.df = None
         self.load_data()
         self.load_precautions()
+
+        # If pre-trained models and label encoder exist, load them to avoid expensive retraining
+        try:
+            rf_path = os.path.join(self.model_dir, 'rf_model.pkl')
+            xgb_path = os.path.join(self.model_dir, 'xgb_model.pkl')
+            mlp_path = os.path.join(self.model_dir, 'mlp_model.pkl')
+            le_path = os.path.join(self.model_dir, 'label_encoder.pkl')
+
+            if all(os.path.exists(p) for p in [rf_path, xgb_path, mlp_path, le_path]):
+                try:
+                    self.rf_model = joblib.load(rf_path)
+                    self.xgb_model = joblib.load(xgb_path)
+                    self.mlp_model = joblib.load(mlp_path)
+                    self.label_encoder = joblib.load(le_path)
+                    print("✓ Loaded saved models and label encoder from disk.")
+                    return
+                except Exception as e:
+                    print(f"⚠️ Failed to load saved models: {e}. Will retrain.")
+        except Exception:
+            pass
+
+        # Otherwise train models from dataset
         self.train_model()
 
     def load_data(self):
@@ -187,6 +209,10 @@ class DiseasePredictor:
         try:
             if not symptoms:
                 return None, 0.0, symptoms
+            # Ensure models/encoder are loaded
+            if not all([self.rf_model, self.xgb_model, self.mlp_model, self.label_encoder]):
+                print("✗ Prediction requested but models/encoder not loaded")
+                return None, 0.0, symptoms
 
             input_data = {s: [1 if s in symptoms else 0] for s in self.symptoms_list}
             input_df = pd.DataFrame(input_data)
@@ -258,34 +284,17 @@ def login():
 @app.route('/api/logout', methods=['POST'])
 def logout():
     session.pop('user', None)
-    return jsonify({"success": True, "message": "लॉगआउट झाले"}), 200
+            # Read CSV; first column should be the disease name (Marathi)
+            self.df = pd.read_csv('data/disease_symptoms.csv', encoding='utf-8', header=0)
 
+            # Ensure the first column (disease names) is treated as string
+            self.df.iloc[:, 0] = self.df.iloc[:, 0].astype(str)
 
-@app.route('/api/check-session', methods=['GET'])
-def check_session():
-    if 'user' in session:
-        return jsonify({"authenticated": True, "user": session['user']})
-    else:
-        return jsonify({"authenticated": False})
+            # Symptoms/features are all columns after the first column
+            self.symptoms_list = self.df.columns[1:].tolist()
+            print(f"✓ Loaded Marathi dataset with {len(self.df)} records and {len(self.symptoms_list)} symptoms/features")
 
-
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'message': 'AarogyaMitra API is running',
-        'symptoms_loaded': len(predictor.symptoms_list) if predictor.symptoms_list else 0,
-        'model_trained': all(m is not None for m in [predictor.rf_model, predictor.xgb_model, predictor.mlp_model]),
-        'diseases_loaded': len(predictor.label_encoder.classes_) if predictor.label_encoder else 0,
-        'language': 'marathi'
-    })
-
-
-@app.route('/api/symptoms', methods=['GET'])
-def get_symptoms():
-    return jsonify({
-        'symptoms': predictor.symptoms_list,
+            # label encoder will be created during training if models aren't loaded
         'count': len(predictor.symptoms_list),
         'language': 'marathi'
     })

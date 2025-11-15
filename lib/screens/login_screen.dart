@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
 
   // 🔹 Update this IP address to match your Flask backend IP
-  final String baseUrl = 'http://10.117.214.196:5000/api';
+  final String baseUrl = 'http://10.141.90.209:5000/api';
 
   Future<void> _handleAuth(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
