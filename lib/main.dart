@@ -17,7 +17,13 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, auth, chat) {
+            chat!.setUserEmail(auth.userEmail);
+            return chat;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'AarogyaMitra',
