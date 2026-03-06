@@ -15,8 +15,8 @@ class ChatBubble extends StatelessWidget {
             message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!message.isUser)
-            const CircleAvatar(
-              backgroundColor: Colors.blue,
+            CircleAvatar(
+              backgroundColor: Colors.green.shade600,
               child: Text('आ', style: TextStyle(color: Colors.white)),
             ),
           const SizedBox(width: 8),
@@ -24,7 +24,7 @@ class ChatBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: message.isUser ? Colors.blue : Colors.grey[200],
+                color: message.isUser ? const Color(0xFFA5D6A7) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -33,7 +33,7 @@ class ChatBubble extends StatelessWidget {
                   Text(
                     message.message,
                     style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black,
+                      color: Colors.black87,
                     ),
                   ),
                   if (message.disease != null && !message.isUser) ...[
@@ -43,7 +43,7 @@ class ChatBubble extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: message.isUser
                             ? Colors.white.withOpacity(0.2)
-                            : Colors.blue.withOpacity(0.1),
+                            : Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(

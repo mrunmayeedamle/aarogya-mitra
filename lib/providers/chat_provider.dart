@@ -255,7 +255,7 @@ class ChatProvider with ChangeNotifier {
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'text': text, 'language': language}),
+        body: json.encode({'text': text, 'language': language, 'conversation_id': currentConversationId}),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {

@@ -2,15 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/intro_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final seenIntro = prefs.getBool('seenIntro') ?? false;
+
+  runApp(MyApp(showIntro: !seenIntro));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool showIntro;
+
+  const MyApp({super.key, required this.showIntro});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +40,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: const AuthWrapper(),
+        home: showIntro ? const IntroScreen() : const AuthWrapper(),
         debugShowCheckedModeBanner: false,
       ),
     );

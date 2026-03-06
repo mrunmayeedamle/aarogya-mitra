@@ -40,8 +40,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final chatProvider = Provider.of<ChatProvider>(context);
     final currentTitle = chatProvider.currentConversationTitle ?? 'नवीन संभाषण';
     return Scaffold(
+      backgroundColor: const Color(0xFFE8F5E9),
       appBar: AppBar(
-        title: Text(currentTitle),
+        title: Text(
+          currentTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.green.shade700,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -104,7 +111,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
               padding: EdgeInsets.all(16),
               child: Row(
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(
+                    color: Colors.green,
+                  ),
                   SizedBox(width: 16),
                   Text('आरोग्यमित्र विचार करत आहे...'),
                 ],
@@ -120,7 +129,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Column(
@@ -132,9 +141,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
               Expanded(
                 child: TextField(
                   controller: _textController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'किंवा तुमची लक्षणे इथे टाइप करा...',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
@@ -143,7 +154,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
               ),
               const SizedBox(width: 8),
               CircleAvatar(
-                backgroundColor: Colors.blue,
+                backgroundColor: Colors.green.shade700,
                 child: IconButton(
                   icon: const Icon(Icons.send, color: Colors.white),
                   onPressed: () {

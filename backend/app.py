@@ -12,6 +12,7 @@ from sklearn.pipeline import make_pipeline
 from symptom_phrases_marathi import SYMPTOM_PHRASES_MARATHI
 from disease_precautions import DISEASE_PRECAUTIONS
 from flask import Flask, request, jsonify, session
+from rapidfuzz import fuzz
 import os
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,6 +35,8 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    age = db.Column(db.Integer, nullable=True)
+    gender = db.Column(db.String(20), nullable=True)
 
 class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -255,7 +258,17 @@ class DiseasePredictor:
         print("Input text:", marathi_text)
         for symptom, phrases in SYMPTOM_PHRASES_MARATHI.items():
             for phrase in phrases:
+
+                # Exact match (fast)
                 if phrase in marathi_text:
+                    detected_symptoms.append(symptom)
+                    break
+
+                # Fuzzy match
+                similarity = fuzz.partial_ratio(phrase, marathi_text)
+
+                if similarity > 85:
+                    print(f"Fuzzy matched '{phrase}' with score {similarity}")
                     detected_symptoms.append(symptom)
                     break
 
@@ -360,6 +373,8 @@ def signup():
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
+    age = data.get('age')
+    gender = data.get('gender')
 
     if not (name and email and password):
         return jsonify({"success": False, "message": "सर्व फील्ड भरा"}), 400
@@ -368,7 +383,13 @@ def signup():
         return jsonify({"success": False, "message": "ईमेल आधीच नोंदणीकृत आहे"}), 409
 
     hashed_pw = generate_password_hash(password)
-    new_user = User(name=name, email=email, password_hash=hashed_pw)
+    new_user = User(
+        name=name,
+        email=email,
+        password_hash=hashed_pw,
+        age=age,
+        gender=gender
+    )
     db.session.add(new_user)
     db.session.commit()
 
@@ -392,6 +413,24 @@ def login():
 def logout():
     session.pop('user', None)
     return jsonify({"success": True, "message": "लॉगआउट यशस्वी"}), 200
+
+@app.route('/api/profile', methods=['GET'])
+def get_profile():
+    user_email = get_current_user()
+    if not user_email:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    user = User.query.filter_by(email=user_email).first()
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    return jsonify({
+        'success': True,
+        'name': user.name,
+        'email': user.email,
+        'age': user.age,
+        'gender': user.gender
+    })
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -420,6 +459,7 @@ def predict_disease_api():
     try:
         data = request.json
         text = data.get('text', '')
+        conversation_id = data.get('conversation_id')
         if not text:
             return jsonify({'success': False, 'error': 'No text provided'})
 
@@ -434,6 +474,13 @@ def predict_disease_api():
             })
 
         disease, probability, detected_symptoms = predictor.predict_disease(symptoms)
+        # Update conversation title with predicted disease
+        if conversation_id:
+            conv = Conversation.query.get(conversation_id)
+            if conv:
+                conv.title = disease
+                db.session.commit()
+
         raw_prec = predictor.disease_precautions.get(disease, ["डॉक्टरांचा सल्ला घ्या."])
         precautions_list = []
 
