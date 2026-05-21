@@ -20,6 +20,7 @@ import json
 from datetime import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
+from flask_cors import CORS
 
 
 app = Flask(__name__)
@@ -27,6 +28,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'arogyamitra_secret_key'  # change later for production
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+CORS(app)
 
 db = SQLAlchemy(app)
 
@@ -398,7 +400,9 @@ def signup():
 
 @app.route('/api/login', methods=['POST'])
 def login():
+    print("📥 Login route hit") #debug
     data = request.get_json()
+    print("Received data:", data) #debug
     email = data.get('email')
     password = data.get('password')
 

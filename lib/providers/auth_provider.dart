@@ -13,7 +13,7 @@ class AuthProvider with ChangeNotifier {
   String? get userEmail => _userEmail;
 
   // Replace this with your actual Flask backend IP
-  final String _baseUrl = 'http://10.141.115.196:5000/api';
+  final String _baseUrl = 'http://10.99.143.196:5000/api';
 
   AuthProvider() {
     _checkAuthStatus();

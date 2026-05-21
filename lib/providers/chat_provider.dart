@@ -59,7 +59,7 @@ class ChatProvider with ChangeNotifier {
   List<ChatMessage> _messages = [];
   List<Map<String, dynamic>> _conversations = [];
 
-  final String baseUrl = 'http://10.141.115.196:5000/api';
+  final String baseUrl = 'http://10.99.143.196:5000/api';
 
   List<ChatMessage> get messages => _messages;
   List<Map<String, dynamic>> get conversations => _conversations;

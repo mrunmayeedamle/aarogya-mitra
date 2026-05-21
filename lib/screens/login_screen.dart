@@ -20,11 +20,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _selectedGender;
   bool _isLogin = true;
 
-  // 🔹 Update this IP address to match your Flask backend IP
-  final String baseUrl = 'http://10.141.115.196:5000/api';
+  // 🔹 Use your correct IP address
+  final String baseUrl = 'http://10.99.143.196:5000/api';
 
   Future<void> _handleAuth(BuildContext context) async {
-    if (!_formKey.currentState!.validate()) return;
+    // 💡 CHECK YOUR DEBUG CONSOLE FOR THIS MESSAGE
+    debugPrint("🚀 AUTH BUTTON CLICKED! Mode: ${_isLogin ? 'Login' : 'Signup'}");
+
+    if (!_formKey.currentState!.validate()) {
+      debugPrint("❌ Form validation failed");
+      return;
+    }
 
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -36,26 +42,30 @@ class _LoginScreenState extends State<LoginScreen> {
     final body = _isLogin
         ? {'email': email, 'password': password}
         : {
-            'name': name,
-            'email': email,
-            'password': password,
-            'age': age,
-            'gender': gender
-          };
+      'name': name,
+      'email': email,
+      'password': password,
+      'age': age,
+      'gender': gender
+    };
+
+    debugPrint("📡 Sending request to: $url");
 
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
-      );
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint("📤 Status Code: ${response.statusCode}");
+      debugPrint("📄 Response: ${response.body}");
 
       if (!mounted) return;
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // ✅ Successful login or signup
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         await authProvider.setAuthenticated(email);
 
@@ -63,15 +73,15 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(content: Text(data['message'] ?? 'यशस्वी ✅')),
         );
       } else {
-        // ❌ Error message from backend
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? 'त्रुटी आली')),
         );
       }
     } catch (e) {
+      debugPrint("⚠️ NETWORK ERROR: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('सर्व्हरशी संपर्क साधता आला नाही ❌')),
+        SnackBar(content: Text('सर्व्हरशी संपर्क नाही: $e')),
       );
     }
   }
@@ -104,68 +114,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'तुमचा मराठी आरोग्य सहाय्यक',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
                 const SizedBox(height: 32),
                 if (!_isLogin) ...[
                   TextFormField(
                     controller: _nameController,
                     decoration: InputDecoration(
                       labelText: 'नाव',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'कृपया नाव प्रविष्ट करा'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _ageController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'वय',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (!_isLogin && (value == null || value.isEmpty)) {
-                              return 'कृपया वय प्रविष्ट करा';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _selectedGender,
-                          decoration: InputDecoration(
-                            labelText: 'लिंग',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'पुरुष', child: Text('पुरुष')),
-                            DropdownMenuItem(value: 'स्त्री', child: Text('स्त्री')),
-                            DropdownMenuItem(value: 'इतर', child: Text('इतर')),
-                          ],
-                          onChanged: (value) => setState(() => _selectedGender = value),
-                          validator: (value) => !_isLogin && value == null
-                              ? 'निवडा'
-                              : null,
-                        ),
-                      ),
-                    ],
+                    validator: (v) => v!.isEmpty ? 'नाव आवश्यक' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -173,13 +130,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     labelText: 'ईमेल',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'कृपया ईमेल प्रविष्ट करा'
-                      : null,
+                  validator: (v) => v!.isEmpty ? 'ईमेल आवश्यक' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -187,50 +140,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'पासवर्ड',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'कृपया पासवर्ड प्रविष्ट करा';
-                    }
-                    if (value.length < 6) {
-                      return 'पासवर्ड ६ वर्णांपेक्षा जास्त असावा';
-                    }
-                    return null;
-                  },
+                  validator: (v) => v!.length < 6 ? 'पासवर्ड ६ अक्षरी हवा' : null,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: authProvider.isLoading
                       ? null
-                      : () async => _handleAuth(context),
+                      : () => _handleAuth(context),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 55),
                     backgroundColor: Colors.green.shade700,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: authProvider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(_isLogin ? 'लॉगिन' : 'नोंदणी करा'),
                 ),
-                const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLogin = !_isLogin;
-                      _selectedGender = null;
-                    });
-                  },
-                  child: Text(
-                    _isLogin
-                        ? 'नवीन वापरकर्ता? नोंदणी करा'
-                        : 'आधीच खाते आहे? लॉगिन करा',
-                  ),
+                  onPressed: () => setState(() => _isLogin = !_isLogin),
+                  child: Text(_isLogin ? 'नवीन वापरकर्ता? नोंदणी करा' : 'लॉगिन करा'),
                 ),
               ],
             ),
