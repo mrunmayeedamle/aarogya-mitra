@@ -62,8 +62,6 @@ class Message(db.Model):
 class DiseasePredictor:
     def __init__(self):
         self.rf_model = None
-        self.xgb_model = None
-        self.mlp_model = None
         self.label_encoder = None
         self.symptoms_list = []
         self.disease_precautions = {}
@@ -72,29 +70,25 @@ class DiseasePredictor:
         self.load_data()
         self.load_precautions()
 
-        # If pre-trained models and label encoder exist, load them to avoid expensive retraining
+        # Load pre-trained RF model and encoder if available
         try:
             rf_path = os.path.join(self.model_dir, 'rf_model.pkl')
-            xgb_path = os.path.join(self.model_dir, 'xgb_model.pkl')
-            mlp_path = os.path.join(self.model_dir, 'mlp_model.pkl')
             le_path = os.path.join(self.model_dir, 'label_encoder.pkl')
 
-            if all(os.path.exists(p) for p in [rf_path, xgb_path, mlp_path, le_path]):
+            if all(os.path.exists(p) for p in [rf_path, le_path]):
                 try:
                     self.rf_model = joblib.load(rf_path)
-                    self.xgb_model = joblib.load(xgb_path)
-                    self.mlp_model = joblib.load(mlp_path)
                     self.label_encoder = joblib.load(le_path)
                     if self.are_saved_artifacts_compatible():
-                        print("✓ Loaded saved models and label encoder from disk.")
+                        print("✓ Loaded saved Random Forest model and label encoder from disk.")
                         return
-                    print("⚠️ Saved models/label encoder are incompatible with current dataset. Retraining.")
+                    print("⚠️ Saved Random Forest/encoder incompatible. Retraining.")
                 except Exception as e:
-                    print(f"⚠️ Failed to load saved models: {e}. Will retrain.")
+                    print(f"⚠️ Failed to load saved Random Forest: {e}. Will retrain.")
         except Exception:
             pass
 
-        # Otherwise train models from dataset
+        # Train model if not loaded
         self.train_model()
 
     def _get_model_feature_count(self, model):
@@ -107,99 +101,47 @@ class DiseasePredictor:
         return None
 
     def are_saved_artifacts_compatible(self):
-        if self.df is None or self.label_encoder is None or not hasattr(self.label_encoder, 'classes_'):
+        if self.df is None or self.label_encoder is None:
             return False
 
-        dataset_diseases = set(self.df.iloc[:, 0].astype(str).unique().tolist())
+        dataset_diseases = set(self.df.index.astype(str).unique().tolist())
         encoder_diseases = set([str(x) for x in self.label_encoder.classes_])
         if dataset_diseases != encoder_diseases:
-            print(
-                f"⚠️ Label encoder mismatch: dataset has {len(dataset_diseases)} diseases "
-                f"but encoder has {len(encoder_diseases)} classes"
-            )
             return False
 
         expected_features = len(self.symptoms_list)
-        for model_name, model in [
-            ('RandomForest', self.rf_model),
-            ('XGBoost', self.xgb_model),
-            ('MLP', self.mlp_model)
-        ]:
-            feature_count = self._get_model_feature_count(model)
-            if feature_count is None or feature_count != expected_features:
-                print(
-                    f"⚠️ {model_name} feature mismatch: expected {expected_features}, got {feature_count}"
-                )
-                return False
+        feature_count = getattr(self.rf_model, 'n_features_in_', None)
+        if feature_count != expected_features:
+            return False
 
         return True
 
     def load_data(self):
         try:
-            # Load dataset (disease names are in the first column)
-            self.df = pd.read_csv('data/disease_symptoms.csv', encoding='utf-8', index_col=0)
-
-            print("Dataset preview:")
-            print(self.df.head())
-
-            # Clean column names
+            self.df = pd.read_csv('data/Marathi_Training.csv', encoding='utf-8', index_col=0)
             self.df.columns = self.df.columns.str.strip()
-
-            # Convert symptom columns to integers
             for col in self.df.columns:
                 self.df[col] = pd.to_numeric(self.df[col], errors='coerce').fillna(0).astype(int)
-
-            # Symptoms list = all columns
-            self.symptoms_list = self.df.columns.tolist()[1:]
-
-            print(f"✓ Loaded Marathi dataset with {len(self.df)} records and {len(self.symptoms_list)} symptoms")
-
-            # Diseases are stored in index
+            self.symptoms_list = self.df.columns.tolist()
             diseases = self.df.index.astype(str)
-
-            print("Diseases found in dataset:", diseases.unique())
-            print("Total diseases:", len(diseases.unique()))
-
-            # Try loading saved label encoder
             le_path = os.path.join(self.model_dir, 'label_encoder.pkl')
-
             if os.path.exists(le_path):
-                try:
-                    self.label_encoder = joblib.load(le_path)
-
-                    if not hasattr(self.label_encoder, "classes_"):
-                        raise ValueError("LabelEncoder is not fitted")
-
-                    print(f"✓ LabelEncoder classes loaded: {len(self.label_encoder.classes_)} diseases")
-
-                    return
-
-                except Exception as e:
-                    print(f"⚠️ LabelEncoder error ({e}). Recreating encoder...")
-
-            # Create new encoder from dataset
-            self.label_encoder = LabelEncoder()
-            self.label_encoder.fit(diseases)
-
+                self.label_encoder = joblib.load(le_path)
+            else:
+                self.label_encoder = LabelEncoder()
+                self.label_encoder.fit(diseases)
         except Exception as e:
             print(f"✗ Error loading dataset: {e}")
 
     def train_model(self):
         try:
-            X = self.df[self.symptoms_list]
-            y = self.df.index
-
-            # Encode string labels to integers for model training
-            self.label_encoder = LabelEncoder()
-            y_encoded = self.label_encoder.fit_transform(y)
-            X = X.fillna(0)
-            X = X.astype(int)
+            X = self.df[self.symptoms_list].fillna(0).astype(int)
+            y = self.label_encoder.transform(self.df.index)
 
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+                X, y, test_size=0.2, random_state=42, stratify=y
             )
 
-            # 1. Random Forest Model
             self.rf_model = RandomForestClassifier(
                 n_estimators=100,
                 random_state=42,
@@ -207,47 +149,17 @@ class DiseasePredictor:
                 min_samples_split=5,
                 min_samples_leaf=2
             )
-            print("Training RandomForest model...")
+            print("Training Random Forest model...")
             self.rf_model.fit(X_train, y_train)
 
-            # 2. XGBoost Model
-            self.xgb_model = XGBClassifier(
-                n_estimators=100,
-                random_state=42,
-                eval_metric='mlogloss'
-            )
-            print("Training XGBoost model...")
-            self.xgb_model.fit(X_train, y_train)
-
-            # 3. MLP (Neural Network) Model
-            self.mlp_model = make_pipeline(
-                StandardScaler(),
-                MLPClassifier(
-                    hidden_layer_sizes=(100,),
-                    max_iter=1000,
-                    tol=1e-4,
-                    n_iter_no_change=20,
-                    early_stopping=True,
-                    random_state=42,
-                    activation='relu',
-                    solver='adam',
-                    learning_rate_init=0.001,
-                    verbose=False
-                )
-            )
-            print("Training MLP (Neural Network) model...")
-            self.mlp_model.fit(X_train, y_train)
-
-            # Save all models and the label encoder
             os.makedirs(self.model_dir, exist_ok=True)
             joblib.dump(self.rf_model, os.path.join(self.model_dir, 'rf_model.pkl'))
-            joblib.dump(self.xgb_model, os.path.join(self.model_dir, 'xgb_model.pkl'))
-            joblib.dump(self.mlp_model, os.path.join(self.model_dir, 'mlp_model.pkl'))
             joblib.dump(self.label_encoder, os.path.join(self.model_dir, 'label_encoder.pkl'))
-            print("✓ All models trained and saved successfully.")
+
+            print("✓ Random Forest trained and saved successfully.")
 
         except Exception as e:
-            print(f"✗ Error training model: {e}")
+            print(f"✗ Error training Random Forest: {e}")
 
     def load_precautions(self):
         self.disease_precautions = DISEASE_PRECAUTIONS
@@ -280,62 +192,17 @@ class DiseasePredictor:
 
     def predict_disease(self, symptoms):
         try:
-            if not symptoms:
-                return None, 0.0, symptoms
-            if not all([self.rf_model, self.xgb_model, self.mlp_model, self.label_encoder]):
-                print("✗ Prediction requested but models/encoder not loaded")
+            if not symptoms or not self.rf_model or not self.label_encoder:
                 return None, 0.0, symptoms
 
             input_vector = [1 if s in symptoms else 0 for s in self.symptoms_list]
-
-            # Debug 3
-            print("Symptoms received by model:", symptoms)
-            print("First 15 dataset symptoms:", self.symptoms_list[:15])
-            print("Input vector sample:", input_vector[:15])
-
             input_df = pd.DataFrame([input_vector], columns=self.symptoms_list)
 
             probs_rf = self.rf_model.predict_proba(input_df)
-            probs_xgb = self.xgb_model.predict_proba(input_df)
-            probs_mlp = self.mlp_model.predict_proba(input_df)
+            final_prediction_index = int(np.argmax(probs_rf, axis=1)[0])
+            probability = float(np.max(probs_rf, axis=1)[0])
+            predicted_disease = self.label_encoder.classes_[final_prediction_index]
 
-            # Debug 4
-            print("RF probs:", probs_rf)
-            print("XGB probs:", probs_xgb)
-            print("MLP probs:", probs_mlp)
-
-            final_probs = (0.4 * probs_rf + 0.4 * probs_xgb + 0.2 * probs_mlp)
-            # Debug 5
-            print("Final ensemble probs:", final_probs)
-
-            # Ensure we are dealing with 1D probabilities for the prediction
-            if final_probs.ndim > 1:
-                final_prediction_index = int(np.argmax(final_probs, axis=1)[0])
-                probability = float(np.max(final_probs, axis=1)[0])
-
-                # Debug 6
-                print("Prediction index:", final_prediction_index)
-                print("Encoder classes:", self.label_encoder.classes_)
-            else:
-                final_prediction_index = int(np.argmax(final_probs))
-                probability = float(np.max(final_probs))
-
-            predicted_disease = "अज्ञात आजार"
-            if self.label_encoder and hasattr(self.label_encoder, 'classes_'):
-                try:
-                    # Robust label decoding: use classes_ directly if index is valid
-                    if 0 <= final_prediction_index < len(self.label_encoder.classes_):
-                        predicted_disease = self.label_encoder.classes_[final_prediction_index]
-                    else:
-                        predicted_disease = self.label_encoder.inverse_transform([final_prediction_index])[0]
-                except Exception as e:
-                    print(f"⚠️ Label decoding failed: {e}")
-                    predicted_disease = str(final_prediction_index)
-
-            # Ensure predicted_disease is a string and not a numpy object
-            predicted_disease = str(predicted_disease)
-
-            print(f"✅ Final Prediction: {predicted_disease}, Probability: {probability:.2f}")
             return predicted_disease, probability, symptoms
 
         except Exception as e:
