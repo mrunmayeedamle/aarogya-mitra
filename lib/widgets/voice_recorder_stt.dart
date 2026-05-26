@@ -9,7 +9,8 @@ import 'dart:convert';
 import '../providers/chat_provider.dart';
 
 class VoiceRecorderSTT extends StatefulWidget {
-  const VoiceRecorderSTT({super.key});
+  final Function(Map<String, dynamic>?)? onResult;
+  const VoiceRecorderSTT({super.key, this.onResult});
 
   @override
   _VoiceRecorderSTTState createState() => _VoiceRecorderSTTState();
@@ -112,10 +113,8 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
     try {
       _showMessage('ध्वनी मजकुरात रूपांतरित करत आहे...');
 
-      // Option 1: Use your own backend STT
       final recognizedText = await _sendToBackendSTT(audioPath);
 
-      // Option 2: Fallback to simulated text if backend fails
       if (recognizedText.isEmpty) {
         _showMessage('STT सेवा उपलब्ध नाही. सिम्युलेटेड वापरत आहे.');
         _useSimulatedText();
@@ -138,7 +137,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
       final audioFile = File(audioPath);
       final audioBytes = await audioFile.readAsBytes();
 
-      // Send to your Python backend for speech recognition
       final response = await http
           .post(
             Uri.parse('${chatProvider.baseUrl}/speech-to-text'),
@@ -176,11 +174,15 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
     _processVoiceInput(randomSymptom);
   }
 
-  void _processVoiceInput(String text) {
+  Future<void> _processVoiceInput(String text) async {
     _showMessage('ऐकले: $text');
 
-    Provider.of<ChatProvider>(context, listen: false)
+    final data = await Provider.of<ChatProvider>(context, listen: false)
         .sendTextMessage(text, 'marathi');
+    
+    if (widget.onResult != null) {
+      widget.onResult!(data);
+    }
   }
 
   void _showMessage(String message) {
@@ -202,7 +204,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Recording indicator
         if (_isRecording)
           Container(
             padding: const EdgeInsets.all(12),
@@ -225,7 +226,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Pulsing animation
                 Container(
                   width: 12,
                   height: 12,
@@ -238,7 +238,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
             ),
           ),
 
-        // Processing indicator
         if (_isProcessing)
           Container(
             padding: const EdgeInsets.all(12),
@@ -271,7 +270,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
             ),
           ),
 
-        // Voice button
         Container(
           decoration: BoxDecoration(
             color: _isRecording
@@ -307,7 +305,6 @@ class _VoiceRecorderSTTState extends State<VoiceRecorderSTT> {
           ),
         ),
 
-        // Status text
         Text(
           _isProcessing
               ? 'प्रक्रिया करत आहे'

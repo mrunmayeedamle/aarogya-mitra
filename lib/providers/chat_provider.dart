@@ -205,8 +205,6 @@ class ChatProvider with ChangeNotifier {
   Future<void> updateConversationTitle(int conversationId, String title) async {
     // Note: You might need to add a backend route for this, 
     // but for now we'll just implement it locally or assume the backend handles it via another POST.
-    // If backend doesn't have it, we can skip or add a route.
-    // Let's assume we'll just reload conversations after some change.
   }
 
   // ---------------- MESSAGE HANDLING ----------------
@@ -237,8 +235,8 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sendTextMessage(String text, String language) async {
-    if (text.trim().isEmpty || _currentConversationId == null) return;
+  Future<Map<String, dynamic>?> sendTextMessage(String text, String language, {bool noMoreSymptoms = false}) async {
+    if (text.trim().isEmpty || _currentConversationId == null) return null;
 
     _isLoading = true;
     notifyListeners();
@@ -255,11 +253,20 @@ class ChatProvider with ChangeNotifier {
       final response = await http.post(
         Uri.parse('$baseUrl/predict'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'text': text, 'language': language, 'conversation_id': currentConversationId}),
+        body: json.encode({
+          'text': text, 
+          'language': language, 
+          'conversation_id': _currentConversationId,
+          'no_more_symptoms': noMoreSymptoms,
+        }),
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        if (data['follow_up_needed'] == true) {
+          return data;
+        }
 
         if (data['success'] == true) {
           final List rawSymptoms = (data['symptoms_detected'] as List?) ?? [];
@@ -293,6 +300,7 @@ ${precautionsList.map((p) => '• $p').join('\n')}
           );
           await addMessageToBackend(errorMsg);
         }
+        return data;
       }
     } catch (e) {
       debugPrint("Prediction error: $e");
@@ -301,6 +309,7 @@ ${precautionsList.map((p) => '• $p').join('\n')}
       await loadConversations();
       notifyListeners();
     }
+    return null;
   }
 
   void clearChat() {
