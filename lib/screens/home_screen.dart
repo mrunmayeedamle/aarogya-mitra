@@ -49,6 +49,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _confirmLogout(BuildContext context, AuthProvider authProvider) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('लॉगआउट करायचे?'),
+        content: const Text('तुम्हाला नक्की लॉगआउट करायचे आहे का?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('रद्द करा'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('लॉगआउट', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await authProvider.logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatProvider = Provider.of<ChatProvider>(context);
@@ -72,9 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await authProvider.logout();
-            },
+            onPressed: () => _confirmLogout(context, authProvider),
           ),
         ],
       ),
@@ -109,9 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('लॉगआउट'),
-              onTap: () async {
+              onTap: () {
                 Navigator.pop(context);
-                await authProvider.logout();
+                _confirmLogout(context, authProvider);
               },
             ),
           ],

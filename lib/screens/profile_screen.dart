@@ -60,6 +60,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _confirmLogout(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('लॉगआउट करायचे?'),
+        content: const Text('तुम्हाला नक्की लॉगआउट करायचे आहे का?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('रद्द करा'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('लॉगआउट', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      await authProvider.logout();
+      if (context.mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -112,10 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Provider.of<AuthProvider>(context, listen: false).logout();
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      },
+                      onPressed: () => _confirmLogout(context),
                       icon: const Icon(Icons.logout),
                       label: const Text("लॉगआउट करा"),
                       style: ElevatedButton.styleFrom(
