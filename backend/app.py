@@ -240,12 +240,28 @@ class DiseasePredictor:
             input_vector = [1 if s in symptoms else 0 for s in self.symptoms_list]
             input_df = pd.DataFrame([input_vector], columns=self.symptoms_list)
 
-            probs_rf = self.rf_model.predict_proba(input_df)
-            final_prediction_index = int(np.argmax(probs_rf, axis=1)[0])
-            probability = float(np.max(probs_rf, axis=1)[0])
-            predicted_disease = self.label_encoder.classes_[final_prediction_index]
+            probs_rf = self.rf_model.predict_proba(input_df)[0]
 
-            return predicted_disease, probability, symptoms
+            top_indices = probs_rf.argsort()[-3:][::-1]
+
+            top_predictions = []
+
+            for idx in top_indices:
+
+                disease_name = self.label_encoder.classes_[idx]
+
+                top_predictions.append({
+                    "disease": disease_name,
+                    "probability": round(float(probs_rf[idx]), 2)
+                })
+
+            top1 = top_predictions[0]["probability"]
+            top2 = top_predictions[1]["probability"]
+
+            is_ambiguous = abs(top1 - top2) < 0.15
+
+            return top_predictions, is_ambiguous, symptoms
+
         except Exception as e:
             print(f"✗ Error during prediction: {e}")
             return None, 0.0, symptoms
@@ -391,7 +407,12 @@ def predict_disease_api():
         if not symptoms:
             return jsonify({'success': False, 'error_marathi': "माफ करा, लक्षणे सापडली नाहीत. कृपया तुमची लक्षणे स्पष्टपणे सांगा.", 'suggested_symptoms': predictor.symptoms_list[:10]})
 
-        disease, probability, _ = predictor.predict_disease(symptoms)
+        top_predictions, is_ambiguous, _ = predictor.predict_disease(symptoms)
+
+        best_prediction = top_predictions[0]
+
+        disease = best_prediction["disease"]
+        probability = best_prediction["probability"]
 
         # Simple vs Complex logic
         SIMPLE_DISEASES = ["सर्दी-खोकला", "मुरुम", "ॲसिड रिफ्लक्स", "ॲलर्जी", "फंगल इन्फेक्शन", "पोटदुखी", "खाज", "ताप"]
@@ -405,6 +426,9 @@ def predict_disease_api():
                 'suggested_symptoms': predictor.get_followup_symptoms(symptoms),
                 'message': 'कृपया आणखी लक्षणे निवडा'
             })
+
+        if no_more_symptoms:
+            is_ambiguous = False
 
         # If user says "None of the above",
         # proceed with best possible prediction
@@ -425,12 +449,53 @@ def predict_disease_api():
         else: precautions_list = [str(raw_prec)]
 
         precautions_list = list(dict.fromkeys([p.strip() for p in precautions_list if p]))
+
+        for prediction in top_predictions:
+
+            disease_name = prediction["disease"]
+
+            raw_precautions = predictor.disease_precautions.get(
+                disease_name,
+                ["डॉक्टरांचा सल्ला घ्या."]
+            )
+
+            parsed_precautions = []
+
+            if isinstance(raw_precautions, dict):
+
+                for value in raw_precautions.values():
+
+                    if isinstance(value, list):
+                        parsed_precautions.extend(value)
+
+                    elif isinstance(value, str):
+                        parsed_precautions.append(value)
+
+            elif isinstance(raw_precautions, list):
+
+                parsed_precautions = list(raw_precautions)
+
+            else:
+
+                parsed_precautions = [str(raw_precautions)]
+
+            parsed_precautions = list(
+                dict.fromkeys([
+                    p.strip()
+                    for p in parsed_precautions
+                    if p
+                ])
+            )
+
+            prediction["precautions"] = parsed_precautions
+
         confidence_level = "उच्च" if probability > 0.7 else "मध्यम" if probability > 0.4 else "कमी"
 
         extra_message = ""
 
         if len(symptoms) <= 2 and no_more_symptoms:
             extra_message = "दिलेल्या मर्यादित लक्षणांवर आधारित अंदाज देण्यात आला आहे."
+
 
         return jsonify({
              'success': True,
@@ -439,8 +504,12 @@ def predict_disease_api():
              'probability': probability,
              'confidence': confidence_level,
              'precautions_marathi': precautions_list,
+             'ambiguous': is_ambiguous,
+             'top_predictions': top_predictions,
              'message': f'तुमच्या लक्षणांवरून, तुम्हाला {disease} असू शकते. {extra_message}'
-         })
+        })
+
+
 
     except Exception as e:
         print(f"💥 Error: {e}"); return jsonify({'success': False, 'error': str(e)})

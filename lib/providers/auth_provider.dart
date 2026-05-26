@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -12,8 +13,7 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get userEmail => _userEmail;
 
-  // Replace this with your actual Flask backend IP
-  final String _baseUrl = 'http://10.99.143.196:5000/api';
+  final String _baseUrl = dotenv.env['BASE_URL']!;
 
   AuthProvider() {
     _checkAuthStatus();

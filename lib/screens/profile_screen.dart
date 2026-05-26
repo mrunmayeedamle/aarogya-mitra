@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? profileData;
   bool isLoading = true;
-  final String baseUrl = 'http://10.99.143.196:5000/api';
+  final String baseUrl = dotenv.env['BASE_URL']!;
 
   @override
   void initState() {

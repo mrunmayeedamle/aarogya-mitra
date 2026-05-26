@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLogin = true;
 
-  final String baseUrl = 'http://10.99.143.196:5000/api';
+  final String baseUrl = dotenv.env['BASE_URL']!;
 
   Future<void> sendVerificationEmail(
       String userEmail,
@@ -37,9 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
     Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
 
     final body = {
-      'service_id': 'service_xzkuy6g',
-      'template_id': 'template_fgopr06',
-      'user_id': '8Sfx9WXi3K4f1N75W',
+      'service_id': dotenv.env['EMAILJS_SERVICE_ID'],
+      'template_id': dotenv.env['EMAILJS_TEMPLATE_ID'],
+      'user_id': dotenv.env['EMAILJS_USER_ID'],
 
       'template_params': {
         'email': userEmail,

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/tts_service.dart';
 
 class ChatMessage {
@@ -59,7 +60,7 @@ class ChatProvider with ChangeNotifier {
   List<ChatMessage> _messages = [];
   List<Map<String, dynamic>> _conversations = [];
 
-  final String baseUrl = 'http://10.99.143.196:5000/api';
+  final String baseUrl = dotenv.env['BASE_URL']!;
 
   List<ChatMessage> get messages => _messages;
   List<Map<String, dynamic>> get conversations => _conversations;
@@ -268,7 +269,7 @@ class ChatProvider with ChangeNotifier {
           return data;
         }
 
-        if (data['success'] == true) {
+        if (data['success'] == true && data['ambiguous'] != true) {
           final List rawSymptoms = (data['symptoms_detected'] as List?) ?? [];
           final symptomsDetected = rawSymptoms.map((s) => s.toString()).toList();
           final precautionsList = (data['precautions_marathi'] as List?) ?? [];
@@ -292,7 +293,7 @@ ${precautionsList.map((p) => '• $p').join('\n')}
           );
 
           await addMessageToBackend(botMsg);
-        } else {
+        } else if (data['ambiguous'] != true) {
           final errorMsg = ChatMessage(
             message: data['error_marathi'] ?? 'माफ करा, काही त्रुटी आली.',
             isUser: false,
