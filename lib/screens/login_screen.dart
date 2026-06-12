@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ) async {
 
     final verificationLink =
-        'http://10.99.143.196:5000/api/verify-email/$token';
+        'http://10.53.96.196:5000/api/verify-email/$token';
 
     final url =
     Uri.parse('https://api.emailjs.com/api/v1.0/email/send');

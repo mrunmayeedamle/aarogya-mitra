@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final isSelected = _selectedConversationId == conv['id'];
                     final title = conv['title'] ?? 'संभाषण ${index + 1}';
                     final last = conv['lastMessage'] ?? '';
-                    
+
                     return GestureDetector(
                       onTap: () {
                         if (_selectedConversationId != null) {
@@ -199,37 +199,37 @@ class _HomeScreenState extends State<HomeScreen> {
               child: chatProvider.conversations.isEmpty
                   ? const Center(child: Text('अजून कोणत्याही संभाषणाची नोंद नाही.\nनवीन संभाषण सुरू करण्यासाठी मायक्रोफोनवर टॅप करा.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)))
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: chatProvider.conversations.length,
-                      itemBuilder: (context, index) {
-                        final conv = chatProvider.conversations[index];
-                        final isSelected = _selectedConversationId == conv['id'];
-                        return Card(
-                          elevation: isSelected ? 4 : 2,
-                          color: isSelected ? Colors.green.shade50 : Colors.white,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: isSelected ? BorderSide(color: Colors.green.shade700, width: 2) : BorderSide.none,
-                          ),
-                          child: ListTile(
-                            title: Text(conv['title'] ?? 'संभाषण ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(conv['lastMessage'] ?? 'संभाषण पहा...', maxLines: 1, overflow: TextOverflow.ellipsis),
-                            onTap: () {
-                              if (_selectedConversationId != null) {
-                                setState(() => _selectedConversationId = null);
-                              } else {
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => ConversationScreen(conversationId: conv['id'])));
-                              }
-                            },
-                            onLongPress: () => setState(() => _selectedConversationId = conv['id']),
-                            trailing: isSelected
-                                ? IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmDelete(context, chatProvider, conv['id']))
-                                : const Icon(Icons.chevron_right, color: Colors.grey),
-                          ),
-                        );
-                      },
+                padding: const EdgeInsets.all(16),
+                itemCount: chatProvider.conversations.length,
+                itemBuilder: (context, index) {
+                  final conv = chatProvider.conversations[index];
+                  final isSelected = _selectedConversationId == conv['id'];
+                  return Card(
+                    elevation: isSelected ? 4 : 2,
+                    color: isSelected ? Colors.green.shade50 : Colors.white,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: isSelected ? BorderSide(color: Colors.green.shade700, width: 2) : BorderSide.none,
                     ),
+                    child: ListTile(
+                      title: Text(conv['title'] ?? 'संभाषण ${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(conv['lastMessage'] ?? 'संभाषण पहा...', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      onTap: () {
+                        if (_selectedConversationId != null) {
+                          setState(() => _selectedConversationId = null);
+                        } else {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => ConversationScreen(conversationId: conv['id'])));
+                        }
+                      },
+                      onLongPress: () => setState(() => _selectedConversationId = conv['id']),
+                      trailing: isSelected
+                          ? IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmDelete(context, chatProvider, conv['id']))
+                          : const Icon(Icons.chevron_right, color: Colors.grey),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),

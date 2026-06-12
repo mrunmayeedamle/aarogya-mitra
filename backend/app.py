@@ -151,7 +151,7 @@ class DiseasePredictor:
             self.rf_model = RandomForestClassifier(
                 n_estimators=100,
                 random_state=42,
-                max_depth=15, # Increased depth to handle specific single-symptom patterns
+                max_depth=15,
                 min_samples_split=2,
                 min_samples_leaf=1
             )
